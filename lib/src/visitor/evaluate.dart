@@ -5,7 +5,7 @@
 // DO NOT EDIT. This file was generated from async_evaluate.dart.
 // See tool/grind/synchronize.dart for details.
 //
-// Checksum: b0d4460a876c7bb9248da004dece98c690b798dd
+// Checksum: 446c78e4e92f47932bb2d8da1efc02fb03dae34b
 //
 // ignore_for_file: unused_import
 
@@ -816,8 +816,8 @@ class _EvaluateVisitor
     var list = node.list.accept(this);
     var nodeForSpan = _expressionNode(node.list);
     var setVariables = node.variables.length == 1
-        ? (Value value) => _environment.setLocalVariable(
-            node.variables.first, value.withoutSlash(), nodeForSpan)
+        ? (Value value) => _environment.setLocalVariable(node.variables.first,
+            _withoutSlash(value, nodeForSpan), nodeForSpan)
         : (Value value) =>
             _setMultipleVariables(node.variables, value, nodeForSpan);
     return _environment.scope(() {
@@ -837,7 +837,7 @@ class _EvaluateVisitor
     var minLength = math.min(variables.length, list.length);
     for (var i = 0; i < minLength; i++) {
       _environment.setLocalVariable(
-          variables[i], list[i].withoutSlash(), nodeForSpan);
+          variables[i], _withoutSlash(list[i], nodeForSpan), nodeForSpan);
     }
     for (var i = minLength; i < variables.length; i++) {
       _environment.setLocalVariable(variables[i], sassNull, nodeForSpan);
@@ -1284,7 +1284,8 @@ class _EvaluateVisitor
     return queries;
   }
 
-  Value visitReturnRule(ReturnRule node) => node.expression.accept(this);
+  Value visitReturnRule(ReturnRule node) =>
+      _withoutSlash(node.expression.accept(this), node.expression);
 
   Value visitSilentComment(SilentComment node) => null;
 
@@ -1442,7 +1443,7 @@ class _EvaluateVisitor
           deprecation: true);
     }
 
-    var value = node.expression.accept(this).withoutSlash();
+    var value = _withoutSlash(node.expression.accept(this), node.expression);
     _addExceptionSpan(node, () {
       _environment.setVariable(
           node.name, value, _expressionNode(node.expression),
@@ -1549,6 +1550,29 @@ class _EvaluateVisitor
           if (node.allowsSlash && left is SassNumber && right is SassNumber) {
             return (result as SassNumber).withSlash(left, right);
           } else {
+            if (left is SassNumber && right is SassNumber) {
+              String recommendation(Expression expression) {
+                if (expression is BinaryOperationExpression &&
+                    expression.operator == BinaryOperator.dividedBy) {
+                  return "divide(${recommendation(expression.left)}, "
+                      "${recommendation(expression.right)})";
+                } else {
+                  return expression.toString();
+                }
+              }
+
+              _warn(
+                  "Using / for division is deprecated and will be removed in "
+                  "Dart Sass 2.0.0.\n"
+                  "\n"
+                  "Recommendation: ${recommendation(node)}\n"
+                  "\n"
+                  "More info and automated migrator: "
+                  "https://sass-lang.com/d/slash-div",
+                  node.span,
+                  deprecation: true);
+            }
+
             return result;
           }
           break;
@@ -1663,7 +1687,9 @@ class _EvaluateVisitor
       UserDefinedCallable<Environment> callable,
       AstNode nodeWithSpan,
       Value run()) {
-    var evaluated = _evaluateArguments(arguments);
+    // TODO(nweiz): Set [trackSpans] to `null` once we're no longer emitting
+    // deprecation warnings for /-as-division.
+    var evaluated = _evaluateArguments(arguments, trackSpans: true);
 
     var name = callable.name == null ? "@content" : callable.name + "()";
     return _withStackFrame(name, nodeWithSpan, () {
@@ -1678,10 +1704,11 @@ class _EvaluateVisitor
           var minLength =
               math.min(evaluated.positional.length, declaredArguments.length);
           for (var i = 0; i < minLength; i++) {
+            var nodeForSpan = evaluated.positionalNodes[i];
             _environment.setLocalVariable(
                 declaredArguments[i].name,
-                evaluated.positional[i].withoutSlash(),
-                _sourceMap ? evaluated.positionalNodes[i] : null);
+                _withoutSlash(evaluated.positional[i], nodeForSpan),
+                _sourceMap ? nodeForSpan : null);
           }
 
           for (var i = evaluated.positional.length;
@@ -1690,13 +1717,12 @@ class _EvaluateVisitor
             var argument = declaredArguments[i];
             var value = evaluated.named.remove(argument.name) ??
                 argument.defaultValue.accept(this);
+            var nodeForSpan = evaluated.namedNodes[argument.name] ??
+                _expressionNode(argument.defaultValue);
             _environment.setLocalVariable(
                 argument.name,
-                value.withoutSlash(),
-                _sourceMap
-                    ? evaluated.namedNodes[argument.name] ??
-                        _expressionNode(argument.defaultValue)
-                    : null);
+                _withoutSlash(value, nodeForSpan),
+                _sourceMap ? nodeForSpan : null);
           }
 
           SassArgumentList argumentList;
@@ -1736,8 +1762,8 @@ class _EvaluateVisitor
   Value _runFunctionCallable(
       ArgumentInvocation arguments, Callable callable, AstNode nodeWithSpan) {
     if (callable is BuiltInCallable) {
-      return _runBuiltInCallable(arguments, callable, nodeWithSpan)
-          .withoutSlash();
+      return _withoutSlash(
+          _runBuiltInCallable(arguments, callable, nodeWithSpan), nodeWithSpan);
     } else if (callable is UserDefinedCallable<Environment>) {
       return _runUserDefinedCallable(arguments, callable, nodeWithSpan, () {
         for (var statement in callable.declaration.children) {
@@ -1747,7 +1773,7 @@ class _EvaluateVisitor
 
         throw _exception(
             "Function finished without @return.", callable.declaration.span);
-      }).withoutSlash();
+      });
     } else if (callable is PlainCssCallable) {
       if (arguments.named.isNotEmpty || arguments.keywordRest != null) {
         throw _exception("Plain CSS functions don't support keyword arguments.",
@@ -1783,7 +1809,9 @@ class _EvaluateVisitor
   /// body.
   Value _runBuiltInCallable(ArgumentInvocation arguments,
       BuiltInCallable callable, AstNode nodeWithSpan) {
-    var evaluated = _evaluateArguments(arguments, trackSpans: false);
+    // TODO(nweiz): Set [trackSpans] to `false` once we're no longer emitting
+    // deprecation warnings for /-as-division.
+    var evaluated = _evaluateArguments(arguments, trackSpans: true);
 
     var oldCallableNode = _callableNode;
     _callableNode = nodeWithSpan;
@@ -2303,18 +2331,15 @@ class _EvaluateVisitor
 
   /// Returns the [AstNode] whose span should be used for [expression].
   ///
-  /// If [expression] is a variable reference, [AstNode]'s span will be the span
-  /// where that variable was originally declared. Otherwise, this will just
-  /// return [expression].
-  ///
-  /// Returns `null` if [_sourceMap] is `false`.
+  /// If [expression] is a variable reference and [_sourceMap] is `true`,
+  /// [AstNode]'s span will be the span where that variable was originally
+  /// declared. Otherwise, this will just return [expression].
   ///
   /// This returns an [AstNode] rather than a [FileSpan] so we can avoid calling
   /// [AstNode.span] if the span isn't required, since some nodes need to do
   /// real work to manufacture a source span.
   AstNode _expressionNode(Expression expression) {
-    if (!_sourceMap) return null;
-    if (expression is VariableExpression) {
+    if (_sourceMap && expression is VariableExpression) {
       return _environment.getVariableNode(expression.name,
           namespace: expression.namespace);
     } else {
@@ -2402,6 +2427,34 @@ class _EvaluateVisitor
     _member = oldMember;
     _stack.removeLast();
     return result;
+  }
+
+  /// Like [Value.withoutSlash], but produces a deprecation warning if [value]
+  /// was a slash-separated number.
+  Value _withoutSlash(Value value, AstNode nodeForSpan) {
+    if (value is SassNumber && value.asSlash != null) {
+      String recommendation(SassNumber number) {
+        if (number.asSlash != null) {
+          return "divide(${recommendation(number.asSlash.item1)}, "
+              "${recommendation(number.asSlash.item2)})";
+        } else {
+          return number.toString();
+        }
+      }
+
+      _warn(
+          "Using / for division is deprecated and will be removed in Dart Sass "
+          "2.0.0.\n"
+          "\n"
+          "Recommendation: ${recommendation(value)}\n"
+          "\n"
+          "More info and automated migrator: "
+          "https://sass-lang.com/d/slash-div",
+          nodeForSpan.span,
+          deprecation: true);
+    }
+
+    return value.withoutSlash();
   }
 
   /// Creates a new stack frame with location information from [member] and

@@ -15,6 +15,7 @@ import 'util/character.dart';
 import 'util/number.dart';
 import 'utils.dart';
 import 'value.dart';
+import 'warn.dart';
 
 /// A regular expression matching the beginning of a proprietary Microsoft
 /// filter declaration.
@@ -577,6 +578,18 @@ final List<BuiltInCallable> coreFunctions = UnmodifiableListView([
     return SassNumber(_random.nextInt(limit) + 1);
   }),
 
+  BuiltInCallable("divide", r"$numerator, $denominator", (arguments) {
+    var numerator = arguments[0];
+    var denominator = arguments[1];
+
+    if (numerator is! SassNumber || denominator is! SassNumber) {
+      warn("divide() will only support number arguments in a future release.\n"
+          "Use slash-list() instead for a slash separator.");
+    }
+
+    return numerator.dividedBy(denominator);
+  }),
+
   // ## Lists
 
   BuiltInCallable("length", r"$list",
@@ -617,9 +630,11 @@ final List<BuiltInCallable> coreFunctions = UnmodifiableListView([
       separator = ListSeparator.space;
     } else if (separatorParam.text == "comma") {
       separator = ListSeparator.comma;
+    } else if (separatorParam.text == "slash") {
+      separator = ListSeparator.slash;
     } else {
       throw SassScriptException(
-          '\$$separator: Must be "space", "comma", or "auto".');
+          '\$$separator: Must be "space", "comma", "slash", or "auto".');
     }
 
     var bracketed =
@@ -645,9 +660,11 @@ final List<BuiltInCallable> coreFunctions = UnmodifiableListView([
       separator = ListSeparator.space;
     } else if (separatorParam.text == "comma") {
       separator = ListSeparator.comma;
+    } else if (separatorParam.text == "slash") {
+      separator = ListSeparator.slash;
     } else {
       throw SassScriptException(
-          '\$$separator: Must be "space", "comma", or "auto".');
+          '\$$separator: Must be "space", "comma", "slash", or "auto".');
     }
 
     var newList = [...list.asList, value];
@@ -673,15 +690,28 @@ final List<BuiltInCallable> coreFunctions = UnmodifiableListView([
     return index == -1 ? sassNull : SassNumber(index + 1);
   }),
 
-  BuiltInCallable(
-      "list-separator",
-      r"$list",
-      (arguments) => arguments[0].separator == ListSeparator.comma
-          ? SassString("comma", quotes: false)
-          : SassString("space", quotes: false)),
+  BuiltInCallable("list-separator", r"$list", (arguments) {
+    switch (arguments[0].separator) {
+      case ListSeparator.comma:
+        return SassString("comma", quotes: false);
+      case ListSeparator.slash:
+        return SassString("slash", quotes: false);
+      default:
+        return SassString("space", quotes: false);
+    }
+  }),
 
   BuiltInCallable("is-bracketed", r"$list",
       (arguments) => SassBoolean(arguments[0].hasBrackets)),
+
+  BuiltInCallable("slash-list", r"$elements...", (arguments) {
+    var list = arguments[0].asList;
+    if (list.length < 2) {
+      throw SassScriptException("At least two elements are required.");
+    }
+
+    return SassList(list, ListSeparator.slash);
+  }),
 
   // ## Maps
 
@@ -968,6 +998,25 @@ Value _hsl(String name, List<Value> arguments) {
     String name, List<String> argumentNames, Value channels) {
   if (channels.isVar) return _functionString(name, [channels]);
 
+  var originalChannels = channels;
+  Value alphaFromSlashList;
+  if (channels.separator == ListSeparator.slash) {
+    var list = channels.asList;
+    if (list.length != 2) {
+      throw SassScriptException(
+          "Only 2 slash-separated elements allowed, but ${list.length} "
+          "${pluralize('was', list.length, plural: 'were')} passed.");
+    }
+
+    channels = list[0];
+
+    alphaFromSlashList = list[1];
+    if (!alphaFromSlashList.isSpecialNumber) {
+      alphaFromSlashList.assertNumber("alpha");
+    }
+    if (list[0].isVar) return _functionString(name, [originalChannels]);
+  }
+
   var isCommaSeparated = channels.separator == ListSeparator.comma;
   var isBracketed = channels.hasBrackets;
   if (isCommaSeparated || isBracketed) {
@@ -983,17 +1032,19 @@ Value _hsl(String name, List<Value> arguments) {
 
   var list = channels.asList;
   if (list.length > 3) {
-    throw SassScriptException(
-        "Only 3 elements allowed, but ${list.length} were passed.");
+    throw SassScriptException("Only 3 elements allowed, but ${list.length} "
+        "${pluralize('was', list.length, plural: 'were')} passed.");
   } else if (list.length < 3) {
     if (list.any((value) => value.isVar) ||
         (list.isNotEmpty && _isVarSlash(list.last))) {
-      return _functionString(name, [channels]);
+      return _functionString(name, [originalChannels]);
     } else {
       var argument = argumentNames[list.length];
       throw SassScriptException("Missing element $argument.");
     }
   }
+
+  if (alphaFromSlashList != null) return [...list, alphaFromSlashList];
 
   var maybeSlashSeparated = list[2];
   if (maybeSlashSeparated is SassNumber &&

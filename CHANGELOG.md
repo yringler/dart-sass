@@ -1,5 +1,12 @@
 ## 1.21.0
 
+* Deprecate the use of `/` for division. The new `divide()` function should be
+  used instead. See [this page][] for details.
+
+  [this page]: https://sass-lang.com/documentation/breaking-changes/slash-div
+
+* Add a `slash-list()` function that returns a slash-separated list.
+
 * Add a top-level `warn()` function for custom functions and importers to print
   warning messages.
 

@@ -65,6 +65,9 @@ class ListSeparator {
   /// A comma-separated list.
   static const comma = ListSeparator._("comma", ",");
 
+  /// A slash-separated list.
+  static const slash = ListSeparator._("slash", "/");
+
   /// A separator that hasn't yet been determined.
   ///
   /// Singleton lists and empty lists don't have separators defiend. This means

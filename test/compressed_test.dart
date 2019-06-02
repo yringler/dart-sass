@@ -109,6 +109,10 @@ void main() {
         expect(_compile("a {b: x, y, z}"), equals("a{b:x,y,z}"));
       });
 
+      test("don't include spaces around slashes", () {
+        expect(_compile("a {b: slash-list(x, y, z)}"), equals("a{b:x/y/z}"));
+      });
+
       test("do include spaces when space-separated", () {
         expect(_compile("a {b: x y z}"), equals("a{b:x y z}"));
       });
