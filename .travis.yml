@@ -64,9 +64,9 @@ jobs:
     env: DART_CHANNEL=dev
   - <<: *dart-tests
     os: windows
-    # File system watching is extra flaky on Dart 2.5.0 on Windows (see
-    # dart-lang/sdk#38334).
-    env: DART_VERSION=2.4.1
+    env:
+    - DART_CHANNEL=latest
+    - DART_VERSION=2.6.0-dev.7.0
   - <<: *dart-tests
     os: osx
 
