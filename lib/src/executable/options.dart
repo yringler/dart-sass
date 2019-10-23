@@ -102,7 +102,10 @@ class ExecutableOptions {
       ..addFlag('help',
           abbr: 'h', help: 'Print this usage information.', negatable: false)
       ..addFlag('version',
-          help: 'Print the version of Dart Sass.', negatable: false);
+          help: 'Print the version of Dart Sass.', negatable: false)
+      ..addFlag('ascii-only',
+          help:
+              'Don\'t translate unicode escape sequences to utf-8 during parsing.');
 
     return parser;
   }();
@@ -169,6 +172,9 @@ class ExecutableOptions {
 
   /// Whether to silence normal output.
   bool get quiet => _options['quiet'] as bool;
+
+  /// Whether unicode escape sequences should be translated to utf-8 during parsing.
+  bool get asciiOnly => _options['ascii-only'] as bool;
 
   /// The logger to use to emit messages from Sass.
   Logger get logger => quiet ? Logger.quiet : Logger.stderr(color: color);

@@ -58,14 +58,14 @@ class Stylesheet extends ParentStatement {
   ///
   /// Throws a [SassFormatException] if parsing fails.
   factory Stylesheet.parse(String contents, Syntax syntax,
-      {url, Logger logger}) {
+      {url, Logger logger, bool allowUnicodeEscapes}) {
     switch (syntax) {
       case Syntax.sass:
-        return Stylesheet.parseSass(contents, url: url, logger: logger);
+        return Stylesheet.parseSass(contents, url: url, logger: logger, allowUnicodeEscapes: allowUnicodeEscapes);
       case Syntax.scss:
-        return Stylesheet.parseScss(contents, url: url, logger: logger);
+        return Stylesheet.parseScss(contents, url: url, logger: logger, allowUnicodeEscapes: allowUnicodeEscapes);
       case Syntax.css:
-        return Stylesheet.parseCss(contents, url: url, logger: logger);
+        return Stylesheet.parseCss(contents, url: url, logger: logger, allowUnicodeEscapes: allowUnicodeEscapes);
       default:
         throw ArgumentError("Unknown syntax $syntax.");
     }
@@ -76,24 +76,24 @@ class Stylesheet extends ParentStatement {
   /// If passed, [url] is the name of the file from which [contents] comes.
   ///
   /// Throws a [SassFormatException] if parsing fails.
-  factory Stylesheet.parseSass(String contents, {url, Logger logger}) =>
-      SassParser(contents, url: url, logger: logger).parse();
+  factory Stylesheet.parseSass(String contents, {url, Logger logger, bool allowUnicodeEscapes}) =>
+      SassParser(contents, url: url, logger: logger, allowUnicodeEscapes: allowUnicodeEscapes).parse();
 
   /// Parses an SCSS stylesheet from [contents].
   ///
   /// If passed, [url] is the name of the file from which [contents] comes.
   ///
   /// Throws a [SassFormatException] if parsing fails.
-  factory Stylesheet.parseScss(String contents, {url, Logger logger}) =>
-      ScssParser(contents, url: url, logger: logger).parse();
+  factory Stylesheet.parseScss(String contents, {url, Logger logger, bool allowUnicodeEscapes}) =>
+      ScssParser(contents, url: url, logger: logger, allowUnicodeEscapes: allowUnicodeEscapes).parse();
 
   /// Parses a plain CSS stylesheet from [contents].
   ///
   /// If passed, [url] is the name of the file from which [contents] comes.
   ///
   /// Throws a [SassFormatException] if parsing fails.
-  factory Stylesheet.parseCss(String contents, {url, Logger logger}) =>
-      CssParser(contents, url: url, logger: logger).parse();
+  factory Stylesheet.parseCss(String contents, {url, Logger logger, bool allowUnicodeEscapes}) =>
+      CssParser(contents, url: url, logger: logger, allowUnicodeEscapes: allowUnicodeEscapes).parse();
 
   T accept<T>(StatementVisitor<T> visitor) => visitor.visitStylesheet(this);
 

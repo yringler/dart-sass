@@ -27,8 +27,8 @@ final _disallowedFunctionNames =
 class CssParser extends ScssParser {
   bool get plainCss => true;
 
-  CssParser(String contents, {url, Logger logger})
-      : super(contents, url: url, logger: logger);
+  CssParser(String contents, {url, Logger logger, bool allowUnicodeEscapes})
+      : super(contents, url: url, logger: logger, allowUnicodeEscapes: allowUnicodeEscapes);
 
   void silentComment() {
     var start = scanner.state;

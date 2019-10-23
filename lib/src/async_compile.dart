@@ -37,7 +37,8 @@ Future<CompileResult> compileAsync(String path,
     int indentWidth,
     LineFeed lineFeed,
     bool sourceMap = false,
-    bool charset = true}) async {
+    bool charset = true,
+    bool allowUnicodeEscapes}) async {
   // If the syntax is different than the importer would default to, we have to
   // parse the file manually and we can't store it in the cache.
   Stylesheet stylesheet;
@@ -49,7 +50,7 @@ Future<CompileResult> compileAsync(String path,
   } else {
     stylesheet = Stylesheet.parse(
         readFile(path), syntax ?? Syntax.forPath(path),
-        url: p.toUri(path), logger: logger);
+        url: p.toUri(path), logger: logger, allowUnicodeEscapes: allowUnicodeEscapes);
   }
 
   return await _compileStylesheet(
@@ -87,9 +88,10 @@ Future<CompileResult> compileStringAsync(String source,
     LineFeed lineFeed,
     url,
     bool sourceMap = false,
-    bool charset = true}) async {
+    bool charset = true,
+    bool allowUnicodeEscapes}) async {
   var stylesheet =
-      Stylesheet.parse(source, syntax ?? Syntax.scss, url: url, logger: logger);
+      Stylesheet.parse(source, syntax ?? Syntax.scss, url: url, logger: logger, allowUnicodeEscapes: allowUnicodeEscapes);
 
   return _compileStylesheet(
       stylesheet,

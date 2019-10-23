@@ -70,14 +70,16 @@ Future<void> compileStylesheet(ExecutableOptions options, StylesheetGraph graph,
               importer: FilesystemImporter('.'),
               style: options.style,
               sourceMap: options.emitSourceMap,
-              charset: options.charset)
+              charset: options.charset,
+              allowUnicodeEscapes: options.asciiOnly)
           : await compileAsync(source,
               syntax: syntax,
               logger: options.logger,
               importCache: importCache,
               style: options.style,
               sourceMap: options.emitSourceMap,
-              charset: options.charset);
+              charset: options.charset,
+              allowUnicodeEscapes: options.asciiOnly);
     } else {
       result = source == null
           ? compileString(await readStdin(),
@@ -87,14 +89,16 @@ Future<void> compileStylesheet(ExecutableOptions options, StylesheetGraph graph,
               importer: FilesystemImporter('.'),
               style: options.style,
               sourceMap: options.emitSourceMap,
-              charset: options.charset)
+              charset: options.charset,
+              allowUnicodeEscapes: options.asciiOnly)
           : compile(source,
               syntax: syntax,
               logger: options.logger,
               importCache: graph.importCache,
               style: options.style,
               sourceMap: options.emitSourceMap,
-              charset: options.charset);
+              charset: options.charset,
+              allowUnicodeEscapes: options.asciiOnly);
     }
   } on SassException catch (error) {
     if (options.emitErrorCss) {

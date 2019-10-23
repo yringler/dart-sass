@@ -38,8 +38,8 @@ class SassParser extends StylesheetParser {
 
   bool get indented => true;
 
-  SassParser(String contents, {url, Logger logger})
-      : super(contents, url: url, logger: logger);
+  SassParser(String contents, {url, Logger logger, bool allowUnicodeEscapes})
+      : super(contents, url: url, logger: logger, allowUnicodeEscapes: allowUnicodeEscapes);
 
   Interpolation styleRuleSelector() {
     var start = scanner.state;

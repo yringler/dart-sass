@@ -76,8 +76,8 @@ abstract class StylesheetParser extends Parser {
   @protected
   SilentComment lastSilentComment;
 
-  StylesheetParser(String contents, {url, Logger logger})
-      : super(contents, url: url, logger: logger);
+  StylesheetParser(String contents, {url, Logger logger, bool allowUnicodeEscapes})
+      : super(contents, url: url, logger: logger, allowUnicodeEscapes: allowUnicodeEscapes);
 
   // ## Statements
 

@@ -25,6 +25,9 @@ class Parser {
   @protected
   final Logger logger;
 
+  /// Whether unicode escape sequences should be parsed into utf-8.
+  final bool allowUnicodeEscapes;
+
   /// Parses [text] as a CSS identifier and returns the result.
   ///
   /// Throws a [SassFormatException] if parsing fails.
@@ -48,7 +51,7 @@ class Parser {
       Parser(text, logger: logger)._isVariableDeclarationLike();
 
   @protected
-  Parser(String contents, {url, Logger logger})
+  Parser(String contents, {url, Logger logger, this.allowUnicodeEscapes = true})
       : scanner = SpanScanner(contents, sourceUrl: url),
         logger = logger ?? const Logger.stderr();
 
@@ -170,7 +173,7 @@ class Parser {
     } else if (isNameStart(first)) {
       text.writeCharCode(scanner.readChar());
     } else if (first == $backslash) {
-      text.write(escape(identifierStart: true));
+      text.write(escape(identifierStart: true, encodeUnicode: false));
     } else {
       scanner.error("Expected identifier.");
     }
@@ -429,6 +432,22 @@ class Parser {
 
   // ## Characters
 
+  // Constructs hex code from input.
+  String readHex() {
+    assert(isHex(scanner.peekChar()));
+
+    String rawHex = "";
+    for (var i = 0; i < 6; i++) {
+      var next = scanner.peekChar();
+      if (next == null || !isHex(next)) break;
+      rawHex += String.fromCharCode(next);
+    }
+
+    scanCharIf(isWhitespace);
+
+    return rawHex;
+  }
+
   /// Consumes an escape sequence and returns the text that defines it.
   ///
   /// If [identifierStart] is true, this normalizes the escape sequence as
@@ -446,14 +465,16 @@ class Parser {
       scanner.error("Expected escape sequence.");
       return null;
     } else if (isHex(first)) {
-      for (var i = 0; i < 6; i++) {
-        var next = scanner.peekChar();
-        if (next == null || !isHex(next)) break;
-        value *= 16;
-        value += asHex(scanner.readChar());
+      var rawHex = readHex();
+      if (!allowUnicodeEscapes) {
+        return rawHex;
       }
 
-      scanCharIf(isWhitespace);
+      value = rawHex.runes.reduce((total, current) {
+        total *= 16;
+        total += asHex(current);
+        return total;
+      });
     } else {
       value = scanner.readChar();
     }
