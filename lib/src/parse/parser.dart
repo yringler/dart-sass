@@ -173,7 +173,7 @@ class Parser {
     } else if (isNameStart(first)) {
       text.writeCharCode(scanner.readChar());
     } else if (first == $backslash) {
-      text.write(escape(identifierStart: true, encodeUnicode: false));
+      text.write(escape(identifierStart: true));
     } else {
       scanner.error("Expected identifier.");
     }
